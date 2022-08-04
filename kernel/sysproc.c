@@ -46,7 +46,7 @@ sys_sbrk(void)
 
   if(argint(0, &n) < 0)
     return -1;
-  
+
   addr = myproc()->sz;
   if(growproc(n) < 0)
     return -1;
@@ -80,6 +80,25 @@ sys_sleep(void)
 int
 sys_pgaccess(void)
 {
+  uint64 base;
+  int len;
+  uint64 ma;
+
+  struct proc *p = myproc();
+  pagetable_t pagetable = p->pagetable;
+
+
+
+  if(argaddr(0, &base) < 0 || argint(1, &len) < 0 || argaddr(2, &ma) < 0)
+    return -1;
+  printf("va=[%p], len=[%d],ma=[%p]\n",base,len,ma);
+
+  if(len > 32)
+    return -1;
+
+  if(pgaccess(base,len,ma,pagetable) < 0)
+    return -1;
+
   // lab pgtbl: your code here.
   return 0;
 }

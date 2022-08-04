@@ -45,7 +45,7 @@ kvmmake(void)
 
   // map kernel stacks
   proc_mapstacks(kpgtbl);
-  
+
   return kpgtbl;
 }
 
@@ -142,7 +142,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 
   if(size == 0)
     panic("mappages: size");
-  
+
   a = PGROUNDDOWN(va);
   last = PGROUNDDOWN(va + size - 1);
   for(;;){
@@ -333,7 +333,7 @@ void
 uvmclear(pagetable_t pagetable, uint64 va)
 {
   pte_t *pte;
-  
+
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     panic("uvmclear");
@@ -431,4 +431,63 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+static void print_pgtbl(pagetable_t pagetable, int level){
+  pagetable_t next_pagetable;
+
+  for(int i=0;i<512;i++){
+    if(pagetable[i]){
+      pte_t *pte = &pagetable[i];
+      if(level == 3){
+        printf(".. %d: pte %p pa %p\n",i,pagetable[i],PTE2PA(*pte));
+        if(*pte & PTE_V) {
+          next_pagetable = (pagetable_t)PTE2PA(*pte);
+          print_pgtbl(next_pagetable,level-1);
+        }
+      }
+      else if(level == 2){
+        printf(".. .. %d: pte %p pa %p\n",i,pagetable[i],PTE2PA(*pte));
+        if(*pte & PTE_V) {
+          next_pagetable = (pagetable_t)PTE2PA(*pte);
+          print_pgtbl(next_pagetable,level-1);
+        }
+      }
+      else if(level == 1){
+        printf(".. .. ..%d: pte %p pa %p\n",i,pagetable[i],PTE2PA(*pte));
+      }
+      else
+        panic("vmprint level set error\n");
+      }
+    }
+  }
+
+
+void vmprint(pagetable_t pagetable){
+  printf("page table %p\n",pagetable);
+  print_pgtbl(pagetable, 3);
+}
+
+
+int pgaccess(uint64 va,int len,uint64 ma, pagetable_t  pagetable){
+  int mask=0;
+  pte_t *pte;
+
+
+
+  for(int i=0;i<len;i++){
+    pte = walk(pagetable,va,0);
+    if(pte == 0)
+      return -1;
+    if((*pte & PTE_A) != 0){
+      mask |= (1<<i);
+      *pte &= ~PTE_A;
+    }
+    va += PGSIZE;
+  }
+
+  if(copyout(pagetable, ma, (char *)&mask, sizeof(int)) < 0)
+      return -1;
+
+  return 0;
 }
