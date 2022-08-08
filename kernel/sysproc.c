@@ -70,6 +70,8 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+
+  backtrace();
   return 0;
 }
 
@@ -95,3 +97,58 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_sigalarm(void)
+{
+  int ticks;
+  uint64 fn;
+  struct proc *p = myproc();
+
+  if(argint(0, &ticks) < 0 || argaddr(1, &fn) < 0)
+    return -1;
+
+  // printf("sigalarm: ticks=[%d], fn=[%p],pid=[%d]\n",ticks, fn,p->pid);
+
+  p->sig_fn = fn;
+  p->sig_ticks = ticks;
+  p->sig_ticks_cnt = 0;
+  p->sig_flag = 1;
+
+  // sig_help(p->trapframe,&(p->sig_trapframe));
+
+  // printf("%p\n",(*p).sig_trapframe.epc);
+  // printf("%p\n",p->trapframe->epc);
+  // panic("sigalarm\n");
+
+  return 0;
+}
+
+
+uint64
+sys_sigreturn(void)
+{
+
+  struct proc *p = myproc();
+  // printf("sigreturn: pid=[%d]\n",p->pid);
+
+  if(p->sig_flag == 1)
+    return -1;
+
+  p->sig_flag = 1;
+
+  // printf("%p\n",(*p).sig_trapframe.epc);
+  // printf("%p\n",p->trapframe->epc);
+
+  sig_help(&(p->sig_trapframe),p->trapframe);
+
+  // printf("%p\n",p->trapframe->epc);
+
+  // if(p->pid == 4){
+  //   panic("sigreturn");
+  // }
+
+
+  return 0;
+}
+

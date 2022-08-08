@@ -117,6 +117,7 @@ printf(char *fmt, ...)
 void
 panic(char *s)
 {
+  backtrace();
   pr.locking = 0;
   printf("panic: ");
   printf(s);
@@ -131,4 +132,34 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
+}
+
+
+void backtrace(void){
+  uint64 fp;
+  uint64 stack=r_fp();
+  uint64 top = PGROUNDUP(stack);
+  uint64 ra;
+  // printf("%p\n\n",stack);
+  // printf("%p\n\n",p->kstack);
+
+  // for(int i=0;i<4;i++){
+
+  //   fp = walkaddr_kernel(stack-i*8);
+  //   printf("%p\n",fp);
+  //   printf("%p\n",*(uint64*)fp);
+  // }
+
+
+  // printf("%p\n",stack);
+  // printf("%p\n",top);
+  while(stack < top){
+    ra = walkaddr_kernel(stack-8);
+    printf("%p\n",*(uint64*)ra);
+
+    fp = walkaddr_kernel(stack-16);
+    // printf("fp=%p\n",fp);
+    stack = *(uint64*)fp;
+    // printf("stack=%p\n",stack);
+  }
 }

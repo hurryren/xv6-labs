@@ -105,4 +105,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int sig_ticks;
+  int sig_ticks_cnt;
+  int sig_flag;
+  uint64 sig_fn;
+  struct trapframe sig_trapframe; // data page for trampoline.S
 };

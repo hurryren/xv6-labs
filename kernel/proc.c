@@ -32,7 +32,7 @@ struct spinlock wait_lock;
 void
 proc_mapstacks(pagetable_t kpgtbl) {
   struct proc *p;
-  
+
   for(p = proc; p < &proc[NPROC]; p++) {
     char *pa = kalloc();
     if(pa == 0)
@@ -47,7 +47,7 @@ void
 procinit(void)
 {
   struct proc *p;
-  
+
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
@@ -88,7 +88,7 @@ myproc(void) {
 int
 allocpid() {
   int pid;
-  
+
   acquire(&pid_lock);
   pid = nextpid;
   nextpid = nextpid + 1;
@@ -140,6 +140,11 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+
+  p->sig_ticks = 0;
+  p->sig_ticks_cnt = 0;
+  p->sig_fn = 0;
+  p->sig_flag = 0;
 
   return p;
 }
@@ -229,7 +234,7 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
-  
+
   // allocate one user page and copy init's instructions
   // and data into it.
   uvminit(p->pagetable, initcode, sizeof(initcode));
@@ -365,7 +370,7 @@ exit(int status)
 
   // Parent might be sleeping in wait().
   wakeup(p->parent);
-  
+
   acquire(&p->lock);
 
   p->xstate = status;
@@ -421,7 +426,7 @@ wait(uint64 addr)
       release(&wait_lock);
       return -1;
     }
-    
+
     // Wait for a child to exit.
     sleep(p, &wait_lock);  //DOC: wait-sleep
   }
@@ -439,7 +444,7 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-  
+
   c->proc = 0;
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
@@ -529,7 +534,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   // Must acquire p->lock in order to
   // change p->state and then call sched.
   // Once we hold p->lock, we can be
@@ -653,4 +658,44 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+
+void sig_help(struct trapframe* src, struct trapframe *dst){
+  // dst->kernel_satp = src->kernel_satp;
+  // dst->kernel_sp = src->kernel_sp;
+  // dst->kernel_trap = src->kernel_trap;
+  // dst->kernel_hartid = src->kernel_hartid;
+  dst->epc = src->epc;
+  dst->ra = src->ra;
+  dst->sp = src->sp;
+  dst->gp = src->gp;
+  dst->tp = src->tp;
+  dst->t0 = src->t0;
+  dst->t1 = src->t1;
+  dst->t2 = src->t2;
+  dst->s0 = src->s0;
+  dst->s1 = src->s1;
+  dst->a0 = src->a0;
+  dst->a1 = src->a1;
+  dst->a2 = src->a2;
+  dst->a3 = src->a3;
+  dst->a4 = src->a4;
+  dst->a5 = src->a5;
+  dst->a6 = src->a6;
+  dst->a7 = src->a7;
+  dst->s2 = src->s2;
+  dst->s3 = src->s3;
+  dst->s4 = src->s4;
+  dst->s5 = src->s5;
+  dst->s6 = src->s6;
+  dst->s7 = src->s7;
+  dst->s8 = src->s8;
+  dst->s9 = src->s9;
+  dst->s10 = src->s10;
+  dst->s11 = src->s11;
+  dst->t3 = src->t3;
+  dst->t4 = src->t4;
+  dst->t5 = src->t5;
+  dst->t6 = src->t6;
 }
